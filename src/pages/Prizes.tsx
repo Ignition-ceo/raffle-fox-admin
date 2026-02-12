@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPrizes, type Prize } from "@/lib/firestore";
+import { CreatePrizeModal } from "@/components/prizes/CreatePrizeModal";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -33,24 +34,26 @@ const columns = [
 export default function Prizes() {
   const [loading, setLoading] = useState(true);
   const [prizes, setPrizes] = useState<any[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const fetchPrizes = async () => {
+    setLoading(true);
+    try {
+      const data = await getPrizes();
+      setPrizes(
+        data.map((prize) => ({
+          ...prize,
+          prizeValue: formatCurrency(prize.prizeValue),
+        }))
+      );
+    } catch (error) {
+      console.error("Error fetching prizes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchPrizes() {
-      try {
-        const data = await getPrizes();
-        setPrizes(
-          data.map((prize) => ({
-            ...prize,
-            prizeValue: formatCurrency(prize.prizeValue),
-          }))
-        );
-      } catch (error) {
-        console.error("Error fetching prizes:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchPrizes();
   }, []);
 
@@ -65,12 +68,18 @@ export default function Prizes() {
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Filter
             </Button>
-            <Button>
+            <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Create New
             </Button>
           </>
         }
+      />
+
+      <CreatePrizeModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={fetchPrizes}
       />
 
       <Card className="p-5 shadow-sm">
