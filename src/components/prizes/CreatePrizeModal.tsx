@@ -140,6 +140,8 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
   const [newSponsorName, setNewSponsorName] = useState("");
   const [newSponsorSaving, setNewSponsorSaving] = useState(false);
   const [showNewCategory, setShowNewCategory] = useState(false);
+  const [sponsorLogoFile, setSponsorLogoFile] = useState<File | null>(null);
+  const [sponsorLogoPreview, setSponsorLogoPreview] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -250,6 +252,15 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
     }
   };
 
+  const handleSponsorLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSponsorLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setSponsorLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   // Submit
   const onSubmit = async (values: FormValues) => {
     if (imageFiles.length === 0) {
@@ -263,6 +274,20 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
 
     setSaving(true);
     try {
+      // Upload sponsor logo if provided
+      if (sponsorLogoFile && values.sponsorId) {
+        const storage = (await import("firebase/storage"));
+        const { getStorage, ref, uploadBytes, getDownloadURL } = storage;
+        const stor = getStorage();
+        const logoRef = ref(stor, `sponsors/${Date.now()}_${sponsorLogoFile.name}`);
+        await uploadBytes(logoRef, sponsorLogoFile);
+        const logoUrl = await getDownloadURL(logoRef);
+        // Update sponsor doc with logo
+        const { doc, updateDoc } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        await updateDoc(doc(db, "sponsors", values.sponsorId), { logo: [logoUrl], logoUrl });
+      }
+
       const keywords = [values.detail1, values.detail2, values.detail3].filter(Boolean) as string[];
 
       await createPrizeDocument(
@@ -298,6 +323,8 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
       form.reset();
       setImageFiles([]);
       setImagePreviews([]);
+      setSponsorLogoFile(null);
+      setSponsorLogoPreview(null);
       setSelectedRegions([]);
       onOpenChange(false);
       onCreated?.();
@@ -512,17 +539,38 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Sponsor Logos*</Label>
-                    <div className="mt-2 h-24 border border-border rounded-lg flex items-center justify-center bg-muted/30">
+                    <div className="mt-2 h-24 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/30 relative cursor-pointer hover:bg-muted/50 transition-colors">
                       {selectedSponsor && (selectedSponsor as any).logo?.[0] ? (
                         <img
                           src={(selectedSponsor as any).logo[0]}
                           alt="Sponsor logo"
                           className="max-h-20 max-w-full object-contain"
                         />
+                      ) : sponsorLogoPreview ? (
+                        <img
+                          src={sponsorLogoPreview}
+                          alt="Logo preview"
+                          className="max-h-20 max-w-full object-contain"
+                        />
                       ) : (
-                        <span className="text-sm text-muted-foreground">No logo uploaded</span>
+                        <label htmlFor="sponsor-logo-upload" className="flex flex-col items-center gap-1 cursor-pointer">
+                          <Upload className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Click to upload logo</span>
+                        </label>
                       )}
+                      <input
+                        id="sponsor-logo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={handleSponsorLogoUpload}
+                      />
                     </div>
+                    {sponsorLogoPreview && (
+                      <Button type="button" variant="ghost" size="sm" className="mt-1 text-xs text-muted-foreground" onClick={() => { setSponsorLogoFile(null); setSponsorLogoPreview(null); }}>
+                        Remove
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Section>
