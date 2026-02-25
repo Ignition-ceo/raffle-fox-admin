@@ -28,9 +28,9 @@ const menuItems = [
   { title: "Prize Database", icon: Database, route: "/prizes" },
   { title: "Game Database", icon: Ticket, route: "/games" },
   { title: "Gamers Management", icon: Users, route: "/gamers" },
+  { title: "Game Images", icon: Image, route: "/game-images" },
   { title: "Sponsor Library", icon: Briefcase, route: "/sponsors" },
   { title: "Notifications", icon: Bell, route: "/notifications" },
-  { title: "Game Images", icon: Image, route: "/game-images" },
   { title: "Partner Management", icon: Handshake, route: "/partners" },
   { title: "Admin Management", icon: Shield, route: "/admins" },
 ];

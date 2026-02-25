@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,46 +10,62 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { onRevenueChange, type RevenuePeriod } from "@/lib/firestore";
 
-const dailyData = [
-  { day: "Mon", revenue: 2400, projected: 2200 },
-  { day: "Tue", revenue: 1398, projected: 2100 },
-  { day: "Wed", revenue: 3200, projected: 2400 },
-  { day: "Thu", revenue: 2780, projected: 2500 },
-  { day: "Fri", revenue: 4890, projected: 2800 },
-  { day: "Sat", revenue: 3390, projected: 2600 },
-  { day: "Sun", revenue: 4490, projected: 3100 },
-];
+type ChartPoint = { label: string; revenue: number };
 
-const weeklyData = [
-  { day: "Week 1", revenue: 12400, projected: 11000 },
-  { day: "Week 2", revenue: 15398, projected: 13000 },
-  { day: "Week 3", revenue: 18200, projected: 15000 },
-  { day: "Week 4", revenue: 21780, projected: 18000 },
-];
+const fallback: Record<string, ChartPoint[]> = {
+  Daily: [
+    { label: "Mon", revenue: 2400 },
+    { label: "Tue", revenue: 1398 },
+    { label: "Wed", revenue: 3200 },
+    { label: "Thu", revenue: 2780 },
+    { label: "Fri", revenue: 4890 },
+    { label: "Sat", revenue: 3390 },
+    { label: "Sun", revenue: 4490 },
+  ],
+  Weekly: [
+    { label: "Week 1", revenue: 12400 },
+    { label: "Week 2", revenue: 15398 },
+    { label: "Week 3", revenue: 18200 },
+    { label: "Week 4", revenue: 21780 },
+  ],
+  Monthly: [
+    { label: "Jan", revenue: 45000 },
+    { label: "Feb", revenue: 52000 },
+    { label: "Mar", revenue: 61000 },
+    { label: "Apr", revenue: 58000 },
+    { label: "May", revenue: 72000 },
+    { label: "Jun", revenue: 85000 },
+  ],
+};
 
-const monthlyData = [
-  { day: "Jan", revenue: 45000, projected: 42000 },
-  { day: "Feb", revenue: 52000, projected: 48000 },
-  { day: "Mar", revenue: 61000, projected: 55000 },
-  { day: "Apr", revenue: 58000, projected: 60000 },
-  { day: "May", revenue: 72000, projected: 65000 },
-  { day: "Jun", revenue: 85000, projected: 75000 },
-];
+const periodMap: Record<string, RevenuePeriod> = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+};
 
 export function RevenueChart() {
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState<string>("daily");
+  const [liveData, setLiveData] = useState<Record<string, ChartPoint[]>>({});
 
-  const getData = () => {
-    switch (period) {
-      case "weekly":
-        return weeklyData;
-      case "monthly":
-        return monthlyData;
-      default:
-        return dailyData;
-    }
-  };
+  // Subscribe to real-time revenue for the current period
+  useEffect(() => {
+    const firestorePeriod = periodMap[period];
+    const unsub = onRevenueChange(firestorePeriod, ({ labels, data }) => {
+      if (labels.length > 0) {
+        setLiveData((prev) => ({
+          ...prev,
+          [firestorePeriod]: labels.map((l, i) => ({ label: l, revenue: data[i] })),
+        }));
+      }
+    });
+    return unsub;
+  }, [period]);
+
+  const firestorePeriod = periodMap[period];
+  const chartData = liveData[firestorePeriod] || fallback[firestorePeriod];
 
   return (
     <Card className="p-5 shadow-sm">
@@ -65,10 +81,10 @@ export function RevenueChart() {
       </div>
       <div className="h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={getData()}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
-              dataKey="day"
+              dataKey="label"
               stroke="hsl(var(--muted-foreground))"
               fontSize={12}
               tickLine={false}
@@ -79,7 +95,7 @@ export function RevenueChart() {
               fontSize={12}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `$${value}`}
+              tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
               contentStyle={{
@@ -87,14 +103,7 @@ export function RevenueChart() {
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "var(--radius)",
               }}
-            />
-            <Line
-              type="monotone"
-              dataKey="projected"
-              stroke="hsl(var(--muted-foreground))"
-              strokeDasharray="5 5"
-              strokeWidth={2}
-              dot={false}
+              formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
             />
             <Line
               type="monotone"

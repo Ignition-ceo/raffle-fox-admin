@@ -7,8 +7,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Prizes from "./pages/Prizes";
+import Games from "./pages/Games";
+import Gamers from "./pages/Gamers";
 import Admins from "./pages/Admins";
 import Sponsors from "./pages/Sponsors";
+import Notifications from "./pages/Notifications";
+import GameImages from "./pages/GameImages";
+import Partners from "./pages/Partners";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -24,80 +29,15 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/prizes"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Prizes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admins"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Admins />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/sponsors"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Sponsors />
-                </ProtectedRoute>
-              }
-            />
-            {/* Placeholder routes for other menu items */}
-            <Route
-              path="/games"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gamers"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/game-images"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partners"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
+            <Route path="/prizes" element={<ProtectedRoute requireAdmin><Prizes /></ProtectedRoute>} />
+            <Route path="/games" element={<ProtectedRoute requireAdmin><Games /></ProtectedRoute>} />
+            <Route path="/gamers" element={<ProtectedRoute requireAdmin><Gamers /></ProtectedRoute>} />
+            <Route path="/sponsors" element={<ProtectedRoute requireAdmin><Sponsors /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
+            <Route path="/game-images" element={<ProtectedRoute requireAdmin><GameImages /></ProtectedRoute>} />
+            <Route path="/partners" element={<ProtectedRoute requireAdmin><Partners /></ProtectedRoute>} />
+            <Route path="/admins" element={<ProtectedRoute requireAdmin><Admins /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
