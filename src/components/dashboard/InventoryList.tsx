@@ -10,19 +10,19 @@ interface InventoryListProps {
 }
 
 export function InventoryList({ prizes, loading }: InventoryListProps) {
-  // Fallback data when not connected to Firestore or loading
   const defaultItems = [
-    { name: "Macbook Pro", quantity: 3, stockLevel: "low" as const },
-    { name: "iPhone 17", quantity: 17, stockLevel: "medium" as const },
-    { name: "50k Dollar", quantity: 15, stockLevel: "medium" as const },
-    { name: "5 Country Tour", quantity: 10, stockLevel: "low" as const },
+    { name: "Macbook Pro", quantity: 3, stockLevel: "low" as const, thumbnail: "" },
+    { name: "iPhone 17", quantity: 17, stockLevel: "medium" as const, thumbnail: "" },
+    { name: "50k Dollar", quantity: 15, stockLevel: "medium" as const, thumbnail: "" },
+    { name: "5 Country Tour", quantity: 10, stockLevel: "low" as const, thumbnail: "" },
   ];
 
   const items = prizes && prizes.length > 0
     ? prizes.map((prize) => ({
         name: prize.prizeName,
-        quantity: prize.stockLevel,
-        stockLevel: (prize.stockLevel <= 3 ? "low" : "medium") as "low" | "medium" | "high",
+        quantity: prize.stockLevel || 0,
+        stockLevel: ((prize.stockLevel || 0) <= 3 ? "low" : "medium") as "low" | "medium" | "high",
+        thumbnail: prize.thumbnail || "",
       }))
     : defaultItems;
 
@@ -51,11 +51,19 @@ export function InventoryList({ prizes, loading }: InventoryListProps) {
               key={index}
               className="flex items-center gap-3 p-3 rounded-md bg-secondary/50"
             >
-              <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {item.name.charAt(0)}
-                </span>
-              </div>
+              {item.thumbnail ? (
+                <img
+                  src={item.thumbnail}
+                  alt={item.name}
+                  className="w-10 h-10 rounded-md object-cover flex-shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    {item.name.charAt(0)}
+                  </span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
                   {item.name}

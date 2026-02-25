@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Activity, DollarSign, TrendingDown, Users } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -11,12 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getRaffles,
-  getLiveRafflesCount,
-  getTotalTicketsSold,
+  onRafflesChange,
+  onLiveRafflesCount,
+  onTotalTicketsSold,
+  onUsersCount,
+  onLowStockPrizes,
   getLowStockCount,
-  getUsersCount,
-  getLowStockPrizes,
   type Raffle,
   type Prize,
 } from "@/lib/firestore";
@@ -24,30 +25,38 @@ import {
 function formatTimeRemaining(endAt: Date): string {
   const now = new Date();
   const diff = endAt.getTime() - now.getTime();
-  
   if (diff <= 0) return "Ended";
-  
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  
-  return `${days} Days: ${hours} Hours: ${mins} Mins`;
+  return `${days}d ${hours}h ${mins}m`;
 }
 
 const columns = [
   { key: "title", header: "Game Name" },
-  { key: "ticketSold", header: "Ticket Sold" },
-  { key: "prizeName", header: "Prize Value" },
-  { key: "sponsorName", header: "Sponsor" },
+  { key: "ticketSold", header: "Tickets Sold" },
+  {
+    key: "prizeName",
+    header: "Prize",
+    render: (v: string, row: any) => (
+      <div className="flex items-center gap-2">
+        {row.picture && (
+          <img src={row.picture} alt="" className="h-7 w-7 rounded object-cover flex-shrink-0" />
+        )}
+        <span className="truncate max-w-[150px]">{v || row.description || "—"}</span>
+      </div>
+    ),
+  },
   { key: "timeToEnd", header: "Time to End" },
   {
-    key: "status",
+    key: "computedStatus",
     header: "Status",
     render: (value: string) => <StatusPill status={value as any} />,
   },
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     liveGames: 0,
@@ -59,48 +68,53 @@ export default function Dashboard() {
   const [lowStockPrizes, setLowStockPrizes] = useState<Prize[]>([]);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [
-          liveGamesCount,
-          totalTickets,
-          lowStockCount,
-          usersCount,
-          rafflesData,
-          lowStockData,
-        ] = await Promise.all([
-          getLiveRafflesCount(),
-          getTotalTicketsSold(),
-          getLowStockCount(),
-          getUsersCount(),
-          getRaffles(),
-          getLowStockPrizes(),
-        ]);
+    // Real-time listeners — each returns an unsubscribe function
+    const unsubs: (() => void)[] = [];
 
-        setStats({
-          liveGames: liveGamesCount,
-          totalSales: totalTickets,
-          lowStock: lowStockCount,
-          users: usersCount,
-        });
+    // Live games count
+    unsubs.push(
+      onLiveRafflesCount((count) => {
+        setStats((prev) => ({ ...prev, liveGames: count }));
+        setLoading(false);
+      })
+    );
 
-        // Transform raffles for table
+    // Total tickets sold
+    unsubs.push(
+      onTotalTicketsSold((count) => {
+        setStats((prev) => ({ ...prev, totalSales: count }));
+      })
+    );
+
+    // Users count
+    unsubs.push(
+      onUsersCount((count) => {
+        setStats((prev) => ({ ...prev, users: count }));
+      })
+    );
+
+    // Raffles for games table
+    unsubs.push(
+      onRafflesChange((data) => {
         setRaffles(
-          rafflesData.map((raffle) => ({
+          data.map((raffle) => ({
             ...raffle,
-            timeToEnd: formatTimeRemaining(raffle.endAt),
+            timeToEnd: formatTimeRemaining(raffle.expiryDate),
           }))
         );
+      })
+    );
 
-        setLowStockPrizes(lowStockData);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+    // Low stock prizes
+    unsubs.push(
+      onLowStockPrizes((prizes) => {
+        setLowStockPrizes(prizes);
+        setStats((prev) => ({ ...prev, lowStock: prizes.length }));
+      })
+    );
 
-    fetchData();
+    // Cleanup all listeners on unmount
+    return () => unsubs.forEach((fn) => fn());
   }, []);
 
   return (
@@ -109,14 +123,14 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="Overview of games, sales, inventory and users"
         actions={
-          <Button>
+          <Button onClick={() => navigate("/games")}>
             <Plus className="h-4 w-4 mr-2" />
             Create New
           </Button>
         }
       />
 
-      {/* Stats Row */}
+      {/* Stats Row — these update in real-time */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
           <>
@@ -145,11 +159,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Games Table */}
+      {/* Games Table — updates in real-time */}
       <Card className="p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-foreground">Games</h3>
-          <Button>
+          <Button onClick={() => navigate("/games")}>
             <Plus className="h-4 w-4 mr-2" />
             Create New
           </Button>
