@@ -31,7 +31,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { getSponsors, type Sponsor } from "@/lib/firestore";
+import { getSponsors, createSponsor, type Sponsor } from "@/lib/firestore";
 import { createPrizeDocument } from "@/lib/prize-service";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -136,6 +136,10 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [showNewSponsor, setShowNewSponsor] = useState(false);
+  const [newSponsorName, setNewSponsorName] = useState("");
+  const [newSponsorSaving, setNewSponsorSaving] = useState(false);
+  const [showNewCategory, setShowNewCategory] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -224,6 +228,25 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
       setCategories((prev) => [...prev, trimmed]);
       form.setValue("prizeCategory", trimmed);
       setNewCategory("");
+      setShowNewCategory(false);
+    }
+  };
+
+  const handleCreateSponsor = async () => {
+    if (!newSponsorName.trim()) return;
+    setNewSponsorSaving(true);
+    try {
+      const docRef = await createSponsor({ sponsorName: newSponsorName.trim(), logo: [], website: "" });
+      const updated = await getSponsors();
+      setSponsors(updated);
+      form.setValue("sponsorId", docRef.id, { shouldValidate: true });
+      setNewSponsorName("");
+      setShowNewSponsor(false);
+      toast({ title: "Sponsor created!", description: `"${newSponsorName.trim()}" added.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to create sponsor.", variant: "destructive" });
+    } finally {
+      setNewSponsorSaving(false);
     }
   };
 
@@ -461,10 +484,27 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
                                   ))}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="outline" size="sm">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setShowNewSponsor(true)}>
                               + Add New Sponsor
                             </Button>
                           </div>
+                          {showNewSponsor && (
+                            <div className="flex gap-2 mt-2">
+                              <Input
+                                placeholder="New sponsor name..."
+                                value={newSponsorName}
+                                onChange={(e) => setNewSponsorName(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleCreateSponsor())}
+                                className="flex-1"
+                              />
+                              <Button type="button" size="sm" onClick={handleCreateSponsor} disabled={newSponsorSaving}>
+                                {newSponsorSaving ? "Saving..." : "Add"}
+                              </Button>
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewSponsor(false)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -516,7 +556,7 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={addCategory}
+                              onClick={() => setShowNewCategory((v) => !v)}
                             >
                               + Add New Type
                             </Button>
@@ -526,13 +566,19 @@ export function CreatePrizeModal({ open, onOpenChange, onCreated }: CreatePrizeM
                       )}
                     />
                     {/* Inline new category input */}
-                    <Input
-                      placeholder="New category name..."
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCategory())}
-                      className="text-sm"
-                    />
+                    {showNewCategory && (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="New category name..."
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCategory())}
+                          className="text-sm flex-1"
+                        />
+                        <Button type="button" size="sm" onClick={addCategory}>Add</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewCategory(false)}>Cancel</Button>
+                      </div>
+                    )}
                   </div>
                   <FormField
                     control={form.control}
