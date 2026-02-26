@@ -554,7 +554,7 @@ function EditActionsDialog({ item, isLive, onClose, onAction }: {
 
               {!isLive && (
                 <div className="flex gap-2 pt-2 border-t">
-                  <Button variant="outline" className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmAction("refund")}>Refund All</Button>
+                  <Button variant="outline" className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmAction("refund")}>Refund Game</Button>
                   <Button variant="outline" className="flex-1 border-red-500 text-red-600 hover:bg-red-50" onClick={() => setConfirmAction("endEarly")}>End Early</Button>
                 </div>
               )}
@@ -565,7 +565,7 @@ function EditActionsDialog({ item, isLive, onClose, onAction }: {
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirmAction === "refund" ? "Refund All Participants" : "End Game Early"}</AlertDialogTitle>
+            <AlertDialogTitle>{confirmAction === "refund" ? "Refund Game" : "End Game Early"}</AlertDialogTitle>
             <AlertDialogDescription>{confirmAction === "refund" ? "All participants will be refunded. This cannot be undone." : "This game will be ended immediately. This cannot be undone."}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
