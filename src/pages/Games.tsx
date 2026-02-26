@@ -245,20 +245,19 @@ export default function Games() {
                 <Eye className="h-4 w-4" />
               </Button>
 
-              {/* Edit — disabled when live */}
+              {/* Edit — live games can only extend */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
                     <Button
                       variant="ghost" size="icon" className="h-8 w-8"
-                      disabled={live}
-                      onClick={() => !live && setEditItem(row)}
+                      onClick={() => setEditItem(row)}
                     >
-                      <Pencil className={`h-4 w-4 ${live ? "opacity-30" : ""}`} />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   </span>
                 </TooltipTrigger>
-                {live && <TooltipContent><p>Cannot edit a live game</p></TooltipContent>}
+                {live && <TooltipContent><p>Only extend is available for live games</p></TooltipContent>}
               </Tooltip>
 
               {/* Delete — disabled when live */}
@@ -445,7 +444,7 @@ export default function Games() {
         </DialogContent>
       </Dialog>
 
-      <EditActionsDialog item={editItem} onClose={() => setEditItem(null)} onAction={handleAction} />
+      <EditActionsDialog item={editItem} isLive={editItem ? isGameLive(editItem) : false} onClose={() => setEditItem(null)} onAction={handleAction} />
 
       {/* ── Single Delete (2-step — only reachable for non-live games) ── */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
@@ -500,40 +499,69 @@ export default function Games() {
   );
 }
 
-function EditActionsDialog({ item, onClose, onAction }: {
-  item: Raffle | null; onClose: () => void;
+function EditActionsDialog({ item, isLive, onClose, onAction }: {
+  item: Raffle | null; isLive: boolean; onClose: () => void;
   onAction: (id: string, action: "extend" | "refund" | "endEarly", date?: string) => void;
 }) {
   const [extendDate, setExtendDate] = useState("");
+  const [extendTime, setExtendTime] = useState("");
   const [confirmAction, setConfirmAction] = useState<"refund" | "endEarly" | null>(null);
   if (!item) return null;
   return (
     <>
       <Dialog open={!!item && !confirmAction} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Manage: {item.title}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{isLive ? "Extend: " : "Manage: "}{item.title}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div><span className="text-muted-foreground">Status:</span> <StatusPill status={item.computedStatus} /></div>
               <div><span className="text-muted-foreground">Ends:</span> {fmtDate(item.expiryDate)}</div>
             </div>
+
+            {isLive && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
+                <p className="text-xs text-amber-700">This game is currently live. Only extending the end date/time is allowed.</p>
+              </div>
+            )}
+
             <div className="border-t pt-4 space-y-3">
               <div>
                 <Label>Extend End Date</Label>
                 <div className="flex gap-2 mt-1">
                   <Input type="date" value={extendDate} onChange={(e) => setExtendDate(e.target.value)} min={item.expiryDate.toISOString().split("T")[0]} className="flex-1" />
-                  <Button onClick={() => { if (extendDate) onAction(item.id, "extend", extendDate); }} disabled={!extendDate} className="bg-emerald-600 hover:bg-emerald-700">Extend</Button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmAction("refund")}>Refund All</Button>
-                <Button variant="outline" className="flex-1 border-red-500 text-red-600 hover:bg-red-50" onClick={() => setConfirmAction("endEarly")}>End Early</Button>
+              <div>
+                <Label>Extend End Time</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input type="time" value={extendTime} onChange={(e) => setExtendTime(e.target.value)} className="flex-1" />
+                </div>
               </div>
+              <Button
+                onClick={() => {
+                  if (extendDate) {
+                    const dateStr = extendTime ? `${extendDate}T${extendTime}` : extendDate;
+                    onAction(item.id, "extend", dateStr);
+                  }
+                }}
+                disabled={!extendDate}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                Extend Game
+              </Button>
+
+              {!isLive && (
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button variant="outline" className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmAction("refund")}>Refund All</Button>
+                  <Button variant="outline" className="flex-1 border-red-500 text-red-600 hover:bg-red-50" onClick={() => setConfirmAction("endEarly")}>End Early</Button>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
-      {/* 2-step confirmation for refund / end early */}
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
