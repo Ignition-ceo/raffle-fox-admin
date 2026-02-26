@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Trash2, Pencil, Clock, SlidersHorizontal, Upload, Square, Play } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil, Clock, SlidersHorizontal, Square, Play } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -29,7 +29,6 @@ import {
   getPrizes, getSponsors, getGameImages,
   type Raffle, type Prize, type Sponsor, type GameImage,
 } from "@/lib/firestore";
-import { uploadGameImage } from "@/lib/gameImageUpload";
 
 function fmtDate(d: Date): string {
   return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(d);
@@ -44,7 +43,6 @@ function fmtRemaining(end: Date): string {
   return `${d}d ${h}h ${m}m`;
 }
 
-/** Check if a game is considered "live" / "active" (cannot edit or delete) */
 function isGameLive(row: Raffle): boolean {
   const s = (row.computedStatus || row.status || "").toLowerCase();
   return s === "live" || s === "active";
@@ -64,9 +62,9 @@ interface GameForm {
   prizeId: string;
   sponsorId: string;
   picture: string;
+  revealImage: string;
   status: string;
-  _gameImageFile?: File;
-  _revealImageFile?: File;
+  selectedGameImageId: string;
 }
 
 const defaultForm: GameForm = {
@@ -75,8 +73,8 @@ const defaultForm: GameForm = {
   createdAt: new Date().toISOString().split("T")[0],
   expiryDate: "",
   startTime: "09:00", endTime: "17:00",
-  prizeId: "", sponsorId: "", picture: "", status: "Active",
-  _gameImageFile: undefined, _revealImageFile: undefined,
+  prizeId: "", sponsorId: "", picture: "", revealImage: "", status: "Active",
+  selectedGameImageId: "",
 };
 
 const gameBulkActions: BulkAction[] = [
@@ -99,7 +97,6 @@ export default function Games() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<GameForm>({ ...defaultForm });
 
-  // Bulk action state — all require confirmation dialogs (2-step)
   const [bulkDeleteIds, setBulkDeleteIds] = useState<string[]>([]);
   const [bulkEndIds, setBulkEndIds] = useState<string[]>([]);
   const [bulkReactivateIds, setBulkReactivateIds] = useState<string[]>([]);
@@ -120,24 +117,29 @@ export default function Games() {
     if (!form.title || !form.expiryDate) {
       toast({ variant: "destructive", title: "Title and end date are required" }); return;
     }
+    if (!form.picture) {
+      toast({ variant: "destructive", title: "Please select a game image" }); return;
+    }
     setSaving(true);
     try {
       const prize = prizes.find((p) => p.id === form.prizeId);
-      const docRef = await createRaffle({
-        title: form.title, description: prize?.prizeName || form.description,
-        picture: form.picture, revealImage: "", prizeId: form.prizeId,
+      await createRaffle({
+        title: form.title,
+        description: prize?.prizeName || form.description,
+        picture: form.picture,
+        revealImage: form.revealImage, // silently attached from game image pair
+        prizeId: form.prizeId,
         sponsorId: form.sponsorId || prize?.sponsorId || "",
-        ticketPrice: parseInt(form.ticketPrice) || 1, category: form.category,
-        gameCategory: form.gameCategory, gameDescription: form.gameDescription,
-        startTime: form.startTime, endTime: form.endTime, status: form.status,
+        ticketPrice: parseInt(form.ticketPrice) || 1,
+        category: form.category,
+        gameCategory: form.gameCategory,
+        gameDescription: form.gameDescription,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        status: form.status,
         createdAt: Timestamp.fromDate(new Date(form.createdAt)),
         expiryDate: Timestamp.fromDate(new Date(form.expiryDate)),
       });
-      const raffleId = docRef.id;
-      const updates: Record<string, string> = {};
-      if (form._gameImageFile) { updates.picture = await uploadGameImage(raffleId, form._gameImageFile, "game"); }
-      if (form._revealImageFile) { updates.revealImage = await uploadGameImage(raffleId, form._revealImageFile, "reveal"); }
-      if (Object.keys(updates).length > 0) await updateRaffle(raffleId, updates);
       toast({ title: "Game created!" });
       setCreateOpen(false);
     } catch (e: any) {
@@ -160,11 +162,9 @@ export default function Games() {
     catch { toast({ variant: "destructive", title: "Delete failed" }); }
   };
 
-  // ── Bulk Action Handlers — ALL are 2-step with confirmation ──
   const handleBulkAction = (actionKey: string, selectedIds: string[]) => {
     switch (actionKey) {
       case "delete": {
-        // Filter out active/live games — they cannot be deleted
         const deletable = selectedIds.filter((id) => {
           const game = raffles.find((r) => r.id === id);
           return game && !isGameLive(game);
@@ -175,17 +175,13 @@ export default function Games() {
           return;
         }
         if (skipped > 0) {
-          toast({ title: `${skipped} active game${skipped > 1 ? "s" : ""} skipped`, description: "Active games cannot be deleted. Only ended/inactive games will be removed." });
+          toast({ title: `${skipped} active game${skipped > 1 ? "s" : ""} skipped`, description: "Active games cannot be deleted." });
         }
         setBulkDeleteIds(deletable);
         break;
       }
-      case "end":
-        setBulkEndIds(selectedIds);
-        break;
-      case "reactivate":
-        setBulkReactivateIds(selectedIds);
-        break;
+      case "end": setBulkEndIds(selectedIds); break;
+      case "reactivate": setBulkReactivateIds(selectedIds); break;
     }
   };
 
@@ -211,6 +207,17 @@ export default function Games() {
       toast({ title: `${bulkReactivateIds.length} game${bulkReactivateIds.length > 1 ? "s" : ""} reactivated` });
       setBulkReactivateIds([]);
     } catch { toast({ variant: "destructive", title: "Some updates failed" }); }
+  };
+
+  /** When admin selects a game image from library, auto-attach reveal silently */
+  const selectGameImage = (img: GameImage) => {
+    setForm({
+      ...form,
+      picture: img.imageUrl,
+      revealImage: (img as any).revealImageUrl || "",
+      gameCategory: img.category || form.gameCategory,
+      selectedGameImageId: img.id,
+    });
   };
 
   const columns = [
@@ -244,31 +251,20 @@ export default function Games() {
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewItem(row)}>
                 <Eye className="h-4 w-4" />
               </Button>
-
-              {/* Edit — live games can only extend */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
-                    <Button
-                      variant="ghost" size="icon" className="h-8 w-8"
-                      onClick={() => setEditItem(row)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditItem(row)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </span>
                 </TooltipTrigger>
                 {live && <TooltipContent><p>Only extend is available for live games</p></TooltipContent>}
               </Tooltip>
-
-              {/* Delete — disabled when live */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
-                    <Button
-                      variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                      disabled={live}
-                      onClick={() => !live && setDeleteId(row.id)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" disabled={live} onClick={() => !live && setDeleteId(row.id)}>
                       <Trash2 className={`h-4 w-4 ${live ? "opacity-30" : ""}`} />
                     </Button>
                   </span>
@@ -304,7 +300,7 @@ export default function Games() {
               <div><Label>Select Prize *</Label>
                 <Select value={form.prizeId} onValueChange={(v) => {
                   const p = prizes.find((x) => x.id === v);
-                  setForm({ ...form, prizeId: v, description: p?.prizeName || "", sponsorId: p?.sponsorId || form.sponsorId, picture: p?.thumbnail || form.picture });
+                  setForm({ ...form, prizeId: v, description: p?.prizeName || "", sponsorId: p?.sponsorId || form.sponsorId });
                 }}>
                   <SelectTrigger><SelectValue placeholder="Pick a prize" /></SelectTrigger>
                   <SelectContent>{prizes.map((p) => <SelectItem key={p.id} value={p.id}>{p.prizeName} (${p.prizeValue})</SelectItem>)}</SelectContent>
@@ -330,62 +326,30 @@ export default function Games() {
             </div>
             <div><Label>Game Description</Label><Input value={form.gameDescription} onChange={(e) => setForm({ ...form, gameDescription: e.target.value })} /></div>
 
-            <div className="space-y-4 rounded-lg border border-border p-4 bg-muted/30">
+            {/* ── Game Image Selection (library only, no upload) ── */}
+            <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/30">
               <div>
-                <Label className="text-base font-semibold">Game Images</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Upload the main game image and the reveal image shown after the raffle ends.</p>
+                <Label className="text-base font-semibold">Select Game Image *</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Choose an image from the library. The corresponding reveal image will be automatically attached.</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm">Game Image (Primary) *</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-3 text-center hover:border-primary/50 transition-colors">
-                    {form._gameImageFile ? (
-                      <div className="space-y-2">
-                        <img src={URL.createObjectURL(form._gameImageFile)} alt="Game preview" className="h-24 w-full object-cover rounded" />
-                        <p className="text-xs text-muted-foreground truncate">{form._gameImageFile.name}</p>
-                        <Button variant="outline" size="sm" onClick={() => setForm({ ...form, _gameImageFile: undefined })}>Remove</Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer block py-4">
-                        <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                        <span className="text-sm text-muted-foreground">Click to upload</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setForm({ ...form, _gameImageFile: e.target.files[0] }); }} />
-                      </label>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">Displayed before and during the raffle.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">Reveal Image (Post-Raffle)</Label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-3 text-center hover:border-primary/50 transition-colors">
-                    {form._revealImageFile ? (
-                      <div className="space-y-2">
-                        <img src={URL.createObjectURL(form._revealImageFile)} alt="Reveal preview" className="h-24 w-full object-cover rounded" />
-                        <p className="text-xs text-muted-foreground truncate">{form._revealImageFile.name}</p>
-                        <Button variant="outline" size="sm" onClick={() => setForm({ ...form, _revealImageFile: undefined })}>Remove</Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer block py-4">
-                        <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                        <span className="text-sm text-muted-foreground">Click to upload</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setForm({ ...form, _revealImageFile: e.target.files[0] }); }} />
-                      </label>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">Displayed only after the raffle ends.</p>
-                </div>
-              </div>
-              {!form._gameImageFile && gameImages.length > 0 && (
-                <div>
-                  <Label className="text-sm text-muted-foreground">Or select from library:</Label>
-                  <div className="grid grid-cols-5 gap-2 mt-1">
-                    {gameImages.slice(0, 10).map((img) => (
-                      <div key={img.id} onClick={() => setForm({ ...form, picture: img.imageUrl, gameCategory: img.category || form.gameCategory })}
-                        className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${form.picture === img.imageUrl ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50"}`}>
-                        <img src={img.imageUrl} alt={img.title} className="h-12 w-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
+              {gameImages.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No game images available. Contact a super admin to add images.</p>
+              ) : (
+                <div className="grid grid-cols-5 gap-2">
+                  {gameImages.map((img) => (
+                    <div
+                      key={img.id}
+                      onClick={() => selectGameImage(img)}
+                      className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
+                        form.selectedGameImageId === img.id
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <img src={img.imageUrl} alt={img.title} className="h-16 w-full object-cover" />
+                      <p className="text-[10px] text-center text-muted-foreground truncate px-1 py-0.5">{img.title}</p>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -401,25 +365,20 @@ export default function Games() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? "Uploading & Creating..." : "Create Game"}</Button>
+            <Button onClick={handleCreate} disabled={saving}>{saving ? "Creating..." : "Create Game"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── View Dialog ── */}
+      {/* ── View Dialog — NEVER shows reveal image ── */}
       <Dialog open={!!viewItem} onOpenChange={() => setViewItem(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>{viewItem?.title}</DialogTitle></DialogHeader>
           {viewItem && (
             <div className="space-y-3">
-              {viewItem.computedStatus === "ended" && (viewItem as any).revealImage ? (
-                <div className="space-y-1">
-                  <img src={(viewItem as any).revealImage} className="w-full h-40 object-cover rounded-lg" alt="Reveal" />
-                  <p className="text-xs text-center text-muted-foreground">Reveal Image (Post-Raffle)</p>
-                </div>
-              ) : viewItem.picture ? (
+              {viewItem.picture && (
                 <img src={viewItem.picture} className="w-full h-40 object-cover rounded-lg" alt="" />
-              ) : null}
+              )}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Prize:</span> {viewItem.description}</div>
                 <div><span className="text-muted-foreground">Ticket Price:</span> {viewItem.ticketPrice} GC</div>
@@ -430,15 +389,6 @@ export default function Games() {
                 <div><span className="text-muted-foreground">Time Left:</span> {fmtRemaining(viewItem.expiryDate)}</div>
                 <div><span className="text-muted-foreground">Status:</span> <StatusPill status={viewItem.computedStatus} /></div>
               </div>
-              {viewItem.picture && (viewItem as any).revealImage && (
-                <div className="border-t pt-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">All Images</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><img src={viewItem.picture} className="w-full h-24 object-cover rounded" alt="Game" /><p className="text-[10px] text-center text-muted-foreground mt-1">Game Image</p></div>
-                    <div><img src={(viewItem as any).revealImage} className="w-full h-24 object-cover rounded" alt="Reveal" /><p className="text-[10px] text-center text-muted-foreground mt-1">Reveal Image</p></div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>
@@ -446,7 +396,6 @@ export default function Games() {
 
       <EditActionsDialog item={editItem} isLive={editItem ? isGameLive(editItem) : false} onClose={() => setEditItem(null)} onAction={handleAction} />
 
-      {/* ── Single Delete (2-step — only reachable for non-live games) ── */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Delete Game</AlertDialogTitle><AlertDialogDescription>This will permanently delete this raffle game. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
@@ -454,7 +403,6 @@ export default function Games() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Bulk Delete (2-step) ── */}
       <AlertDialog open={bulkDeleteIds.length > 0} onOpenChange={() => setBulkDeleteIds([])}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -468,7 +416,6 @@ export default function Games() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Bulk End (2-step) ── */}
       <AlertDialog open={bulkEndIds.length > 0} onOpenChange={() => setBulkEndIds([])}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -482,7 +429,6 @@ export default function Games() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Bulk Reactivate (2-step) ── */}
       <AlertDialog open={bulkReactivateIds.length > 0} onOpenChange={() => setBulkReactivateIds([])}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -519,13 +465,11 @@ function EditActionsDialog({ item, isLive, onClose, onAction }: {
               <div><span className="text-muted-foreground">Status:</span> <StatusPill status={item.computedStatus} /></div>
               <div><span className="text-muted-foreground">Ends:</span> {fmtDate(item.expiryDate)}</div>
             </div>
-
             {isLive && (
               <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
                 <p className="text-xs text-amber-700">This game is currently live. Only extending the end date/time is allowed.</p>
               </div>
             )}
-
             <div className="border-t pt-4 space-y-3">
               <div>
                 <Label>Extend End Date</Label>
@@ -551,7 +495,6 @@ function EditActionsDialog({ item, isLive, onClose, onAction }: {
               >
                 Extend Game
               </Button>
-
               {!isLive && (
                 <div className="flex gap-2 pt-2 border-t">
                   <Button variant="outline" className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmAction("refund")}>Refund Game</Button>

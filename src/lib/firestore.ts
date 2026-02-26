@@ -147,6 +147,8 @@ export interface GameImage {
   title: string;
   name?: string;
   imageUrl: string;
+  revealImageUrl?: string;
+  revealImageUrl?: string;
   gameCategory?: string;
   category?: string;
   status?: string;
@@ -600,6 +602,8 @@ export async function getGameImages(): Promise<GameImage[]> {
     ...d.data(),
     title: d.data().title || d.data().name || "",
     imageUrl: d.data().imageUrl || "",
+    revealImageUrl: d.data().revealImageUrl || "",
+    revealImageUrl: d.data().revealImageUrl || "",
     category: d.data().gameCategory || d.data().category || "",
     createdAt: toDate(d.data().createdAt),
   })) as GameImage[];
@@ -612,6 +616,8 @@ export function onGameImagesChange(cb: (images: GameImage[]) => void): Unsubscri
       ...d.data(),
       title: d.data().title || d.data().name || "",
       imageUrl: d.data().imageUrl || "",
+    revealImageUrl: d.data().revealImageUrl || "",
+    revealImageUrl: d.data().revealImageUrl || "",
       category: d.data().gameCategory || d.data().category || "",
       createdAt: toDate(d.data().createdAt),
     })) as GameImage[]);
