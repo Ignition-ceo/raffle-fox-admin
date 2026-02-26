@@ -101,6 +101,10 @@ export default function Games() {
   const [bulkEndIds, setBulkEndIds] = useState<string[]>([]);
   const [bulkReactivateIds, setBulkReactivateIds] = useState<string[]>([]);
 
+  // Game image selection UI state
+  const [previewImage, setPreviewImage] = useState<GameImage | null>(null);
+  const [browseAllOpen, setBrowseAllOpen] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -328,29 +332,66 @@ export default function Games() {
 
             {/* ── Game Image Selection (library only, no upload) ── */}
             <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/30">
-              <div>
-                <Label className="text-base font-semibold">Select Game Image *</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Choose an image from the library. The corresponding reveal image will be automatically attached.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">Select Game Image *</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Click an image to preview, then confirm your selection.</p>
+                </div>
+                {form.selectedGameImageId && (
+                  <Button variant="outline" size="sm" onClick={() => setForm({ ...form, picture: "", revealImage: "", selectedGameImageId: "", gameCategory: form.gameCategory })}>
+                    Change Selection
+                  </Button>
+                )}
               </div>
+
               {gameImages.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No game images available. Contact a super admin to add images.</p>
               ) : (
-                <div className="grid grid-cols-5 gap-2">
-                  {gameImages.map((img) => (
-                    <div
-                      key={img.id}
-                      onClick={() => selectGameImage(img)}
-                      className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
-                        form.selectedGameImageId === img.id
-                          ? "border-primary ring-2 ring-primary/30"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <img src={img.imageUrl} alt={img.title} className="h-16 w-full object-cover" />
-                      <p className="text-[10px] text-center text-muted-foreground truncate px-1 py-0.5">{img.title}</p>
+                <>
+                  {/* Selected image highlight */}
+                  {form.selectedGameImageId && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <img src={form.picture} alt="Selected" className="h-14 w-20 object-cover rounded" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800">
+                          {gameImages.find((g) => g.id === form.selectedGameImageId)?.title || "Selected"}
+                        </p>
+                        <p className="text-xs text-emerald-600">✓ Image selected — reveal image auto-attached</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Thumbnail grid — show first 5, dim others when one is selected */}
+                  <div className="grid grid-cols-5 gap-2">
+                    {gameImages.slice(0, 5).map((img) => {
+                      const isSelected = form.selectedGameImageId === img.id;
+                      const hasSelection = !!form.selectedGameImageId;
+                      return (
+                        <div
+                          key={img.id}
+                          onClick={() => setPreviewImage(img)}
+                          className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
+                            isSelected
+                              ? "border-primary ring-2 ring-primary/30"
+                              : hasSelection
+                                ? "border-border opacity-40 hover:opacity-70"
+                                : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <img src={img.imageUrl} alt={img.title} className="h-16 w-full object-cover" />
+                          <p className="text-[10px] text-center text-muted-foreground truncate px-1 py-0.5">{img.title}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Browse All button if more than 5 images */}
+                  {gameImages.length > 5 && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => setBrowseAllOpen(true)}>
+                      Browse All Images ({gameImages.length} available)
+                    </Button>
+                  )}
+                </>
               )}
             </div>
 
@@ -441,6 +482,62 @@ export default function Games() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* ── Image Preview Modal (click to see full size, confirm to select) ── */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader><DialogTitle>{previewImage?.title}</DialogTitle></DialogHeader>
+          {previewImage && (
+            <div className="space-y-4">
+              <img src={previewImage.imageUrl} alt={previewImage.title} className="w-full rounded-lg" />
+              <p className="text-sm text-muted-foreground">Category: {previewImage.category || "Uncategorized"}</p>
+              {form.selectedGameImageId === previewImage.id ? (
+                <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+                  <span>✓</span> This image is currently selected
+                </div>
+              ) : (
+                <Button className="w-full" onClick={() => { selectGameImage(previewImage); setPreviewImage(null); }}>
+                  Select This Image
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Browse All Game Images Modal ── */}
+      <Dialog open={browseAllOpen} onOpenChange={setBrowseAllOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Game Images ({gameImages.length})</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {gameImages.map((img) => {
+              const isSelected = form.selectedGameImageId === img.id;
+              const hasSelection = !!form.selectedGameImageId;
+              return (
+                <div
+                  key={img.id}
+                  onClick={() => { setPreviewImage(img); setBrowseAllOpen(false); }}
+                  className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
+                    isSelected
+                      ? "border-primary ring-2 ring-primary/30"
+                      : hasSelection
+                        ? "border-border opacity-40 hover:opacity-70"
+                        : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <img src={img.imageUrl} alt={img.title} className="h-28 w-full object-cover" />
+                  <div className="p-2">
+                    <p className="text-xs font-medium truncate">{img.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{img.category || "Uncategorized"}</p>
+                    {isSelected && <p className="text-[10px] text-emerald-600 font-medium mt-0.5">✓ Selected</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
