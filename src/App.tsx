@@ -13,6 +13,7 @@ import Admins from "./pages/Admins";
 import Sponsors from "./pages/Sponsors";
 import Notifications from "./pages/Notifications";
 import GameImages from "./pages/GameImages";
+import FinancialManagement from "./pages/FinancialManagement";
 import Partners from "./pages/Partners";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
             <Route path="/prizes" element={<ProtectedRoute requireAdmin><Prizes /></ProtectedRoute>} />
             <Route path="/games" element={<ProtectedRoute requireAdmin><Games /></ProtectedRoute>} />
+            <Route path="/financials" element={<ProtectedRoute requireAdmin><FinancialManagement /></ProtectedRoute>} />
             <Route path="/gamers" element={<ProtectedRoute requireAdmin><Gamers /></ProtectedRoute>} />
             <Route path="/sponsors" element={<ProtectedRoute requireAdmin><Sponsors /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute requireAdmin><Notifications /></ProtectedRoute>} />
