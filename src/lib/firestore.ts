@@ -425,7 +425,7 @@ function aggregateRevenue(
   const map: Record<string, number> = {};
   snap.docs.forEach((d) => {
     const data = d.data();
-    const price = data.price || 0;
+    const price = data.price || data.ticketPrice || data.goldCoins || data.amount || 0;
     const ts = data.createdAt;
     if (!ts) return;
     const date = toDate(ts);
