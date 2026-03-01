@@ -401,31 +401,32 @@ export async function getRevenueGrouped(
   type: RevenuePeriod
 ): Promise<{ labels: string[]; data: number[] }> {
   try {
-    const snap = await getDocs(collection(db, "raffle_tickets"));
-    return aggregateRevenue(snap, type);
+    const snap = await getDocs(collection(db, "raffles"));
+    return aggregateRevenueFromRaffles(snap, type);
   } catch (error) {
     console.error("Error fetching revenue:", error);
     return { labels: [], data: [] };
   }
 }
-
 export function onRevenueChange(
   type: RevenuePeriod,
   cb: (result: { labels: string[]; data: number[] }) => void
 ): Unsubscribe {
-  return onSnapshot(collection(db, "raffle_tickets"), (snap) => {
-    cb(aggregateRevenue(snap, type));
+  return onSnapshot(collection(db, "raffles"), (snap) => {
+    cb(aggregateRevenueFromRaffles(snap, type));
   });
 }
-
-function aggregateRevenue(
+function aggregateRevenueFromRaffles(
   snap: QuerySnapshot<DocumentData>,
   type: RevenuePeriod
 ): { labels: string[]; data: number[] } {
   const map: Record<string, number> = {};
   snap.docs.forEach((d) => {
     const data = d.data();
-    const price = data.price || data.ticketPrice || data.goldCoins || data.amount || 0;
+    const ticketPrice = data.ticketPrice || 0;
+    const ticketsSold = data.ticketSold || data.ticketsSold || 0;
+    const revenue = ticketPrice * ticketsSold;
+    if (revenue === 0) return;
     const ts = data.createdAt;
     if (!ts) return;
     const date = toDate(ts);
@@ -439,14 +440,11 @@ function aggregateRevenue(
     } else {
       label = date.toLocaleDateString("en-US", { month: "short" });
     }
-    if (label) map[label] = (map[label] || 0) + price;
+    if (label) map[label] = (map[label] || 0) + revenue;
   });
   const labels = Object.keys(map).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   return { labels, data: labels.map((l) => map[l]) };
 }
-
-// ═══════════════════════════════════════
-//  SPONSORS
 // ═══════════════════════════════════════
 
 export async function getSponsors(): Promise<Sponsor[]> {
