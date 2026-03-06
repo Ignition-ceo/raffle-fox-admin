@@ -17,6 +17,7 @@ import FinancialManagement from "./pages/FinancialManagement";
 import Partners from "./pages/Partners";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +28,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
+          <ErrorBoundary><Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
@@ -41,7 +42,7 @@ const App = () => (
             <Route path="/partners" element={<ProtectedRoute requireAdmin><Partners /></ProtectedRoute>} />
             <Route path="/admins" element={<ProtectedRoute requireAdmin><Admins /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+          </Routes></ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
