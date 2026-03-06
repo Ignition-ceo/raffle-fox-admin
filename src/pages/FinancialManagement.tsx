@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import {
-  DollarSign, TrendingUp, Users, Ticket, ArrowUpRight, ArrowDownRight,
-  ChevronRight, Eye, CheckCircle2, Clock, AlertCircle, Search,
-  Download, Filter, CreditCard, Coins, ArrowLeft, FileText, X,
+  DollarSign, TrendingUp, Users, Ticket, ArrowUpRight, 
+  ChevronRight, Eye, CheckCircle2, Clock, Search,
+  Coins, ArrowLeft, 
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -10,10 +10,10 @@ import { StatusPill } from "@/components/dashboard/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+// import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -294,7 +294,7 @@ export default function FinancialManagement() {
               </Select>
             </div>
 
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-md border border-border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary/50">
@@ -383,7 +383,7 @@ export default function FinancialManagement() {
               <h3 className="font-semibold">Transaction Log</h3>
               <p className="text-xs text-muted-foreground">Coin purchases, refunds, and payouts</p>
             </div>
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-md border border-border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary/50">
