@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import {
-  DollarSign, TrendingUp, Users, Ticket, ArrowUpRight, 
+  DollarSign, TrendingUp, Users, Ticket, ArrowUpRight,
   ChevronRight, Eye, CheckCircle2, Clock, Search,
-  Coins, ArrowLeft, 
+  Coins, ArrowLeft,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -10,12 +10,10 @@ import { StatusPill } from "@/components/dashboard/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { Progress } from "@/components/ui/progress";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
