@@ -28,10 +28,12 @@ import {
 } from "@/lib/firestore";
 
 function fmtDate(d: Date): string {
+  if (!d || isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
 function fmtRemaining(end: Date): string {
+  if (!end || isNaN(end.getTime())) return "—";
   const diff = end.getTime() - Date.now();
   if (diff <= 0) return "Ended";
   const d = Math.floor(diff / 86400000);

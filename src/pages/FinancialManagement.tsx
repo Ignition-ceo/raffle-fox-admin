@@ -78,6 +78,7 @@ function fmtCurrency(val: number): string {
 }
 
 function fmtDate(d: Date): string {
+  if (!d || isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
