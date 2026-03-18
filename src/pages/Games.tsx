@@ -130,7 +130,7 @@ export default function Games() {
         title: form.title,
         description: prize?.prizeName || form.description,
         picture: form.picture,
-        revealImage: form.revealImage, // silently attached from game image pair
+        gameImageId: form.selectedGameImageId, // reference to image_library document
         prizeId: form.prizeId,
         sponsorId: form.sponsorId || prize?.sponsorId || "",
         ticketPrice: parseInt(form.ticketPrice) || 1,
@@ -217,7 +217,7 @@ export default function Games() {
     setForm({
       ...form,
       picture: img.imageUrl,
-      revealImage: (img as any).revealImageUrl || "",
+      
       gameCategory: img.category || form.gameCategory,
       selectedGameImageId: img.id,
     });
@@ -325,7 +325,7 @@ export default function Games() {
                   <p className="text-xs text-muted-foreground mt-0.5">Click an image to preview, then confirm your selection.</p>
                 </div>
                 {form.selectedGameImageId && (
-                  <Button variant="outline" size="sm" onClick={() => setForm({ ...form, picture: "", revealImage: "", selectedGameImageId: "", gameCategory: form.gameCategory })}>
+                  <Button variant="outline" size="sm" onClick={() => setForm({ ...form, picture: "", selectedGameImageId: "", gameCategory: form.gameCategory })}>
                     Change Selection
                   </Button>
                 )}

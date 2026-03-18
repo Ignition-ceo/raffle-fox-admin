@@ -102,6 +102,7 @@ export interface Raffle {
 export interface Sponsor {
   id: string;
   sponsorName: string;
+  gameImageId?: string;
   name: string;
   logo: string[];
   logoUrl: string;
