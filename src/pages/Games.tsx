@@ -313,7 +313,14 @@ export default function Games() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Game Category</Label><Input value={form.gameCategory} onChange={(e) => setForm({ ...form, gameCategory: e.target.value })} placeholder="Puzzle, Action, Strategy..." /></div>
+              <div><Label>Game Category</Label>
+                <Select value={form.gameCategory} onValueChange={(v) => setForm({ ...form, gameCategory: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select sport" /></SelectTrigger>
+                  <SelectContent>
+                    {["Football", "Basketball", "Cricket", "Tennis", "Rugby"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div><Label>Game Description</Label><Input value={form.gameDescription} onChange={(e) => setForm({ ...form, gameDescription: e.target.value })} /></div>
 
