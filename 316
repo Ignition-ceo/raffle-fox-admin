@@ -1,0 +1,8 @@
+<div><Label>Game Category</Label>
+                <Select value={form.gameCategory} onValueChange={(v) => setForm({ ...form, gameCategory: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select sport" /></SelectTrigger>
+                  <SelectContent>
+                    {["Football", "Basketball", "Cricket", "Tennis", "Rugby"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
