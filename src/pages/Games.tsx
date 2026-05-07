@@ -229,7 +229,7 @@ export default function Games() {
       key: "description", header: "Prize",
       render: (v: string, row: Raffle) => (
         <div className="flex items-center gap-2">
-          {row.picture && <img src={row.picture} className="h-8 w-8 rounded object-cover" alt="" />}
+          {prizes.find((p) => p.id === row.prizeId)?.thumbnail && <img src={prizes.find((p) => p.id === row.prizeId)?.thumbnail || ""} className="h-8 w-8 rounded object-cover" alt="" />}
           <span className="truncate max-w-[150px]">{v || "—"}</span>
         </div>
       ),
